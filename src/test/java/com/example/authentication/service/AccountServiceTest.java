@@ -1,6 +1,7 @@
 package com.example.authentication.service;
 
 import com.example.authentication.entity.Account;
+import com.example.authentication.exception.UnauthorizedException;
 import com.example.authentication.repository.AccountRepository;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.DisplayName;
@@ -9,7 +10,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,6 +27,9 @@ public class AccountServiceTest {
 
     @Mock
     private AccountRepository accountRepository;
+
+    @Mock
+    private BCryptPasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AccountService accountService;
@@ -72,6 +79,70 @@ public class AccountServiceTest {
         Account account = new Account();
         when(accountRepository.save(account)).thenThrow(ConstraintViolationException.class);
         assertThrows(ConstraintViolationException.class, () -> accountService.save(account));
+    }
+
+    @Test
+    @DisplayName("authenticate email not found")
+    public void testAuthenticate_givenEmail_whenNotFound_thenThrowUnauthorizedException() {
+        String email = "unknow@mail.com";
+        String password = "random";
+
+        Optional<Account> emptyOpt = Optional.empty();
+        when(accountRepository.findByEmail(email)).thenReturn(emptyOpt);
+
+        UnauthorizedException actual = assertThrows(
+                UnauthorizedException.class,
+                () -> accountService.authenticate(email, password)
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, actual.getStatusCode());
+        assertEquals("email or password invalid", actual.getReason());
+    }
+
+    @Test
+    @DisplayName("authenticate password not match")
+    public void testAuthenticate_givenPassword_whenNotMatch_thenThrowUnauthorizedException() {
+        String email = "test@mail.com";
+        String password = "random";
+
+        Account account = new Account();
+        account.setId(UUID.randomUUID().toString());
+        account.setEmail(email);
+        account.setPassword("password-encoded");
+        Optional<Account> accountOpt = Optional.of(account);
+        when(accountRepository.findByEmail(email)).thenReturn(accountOpt);
+
+        when(passwordEncoder.matches(password, account.getPassword())).thenReturn(false);
+
+        UnauthorizedException actual = assertThrows(
+                UnauthorizedException.class,
+                () -> accountService.authenticate(email, password)
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, actual.getStatusCode());
+        assertEquals("email or password invalid", actual.getReason());
+    }
+
+    @Test
+    @DisplayName("authenticate success")
+    public void testAuthenticate_givenEmailAndPassword_whenSuccess_thenAccount() {
+        String email = "test@mail.com";
+        String password = "secret";
+
+        Account account = new Account();
+        account.setId(UUID.randomUUID().toString());
+        account.setEmail(email);
+        account.setPassword("password-encoded");
+        Optional<Account> accountOpt = Optional.of(account);
+        when(accountRepository.findByEmail(email)).thenReturn(accountOpt);
+
+        when(passwordEncoder.matches(password, account.getPassword())).thenReturn(true);
+
+        Account actual = accountService.authenticate(email, password);
+
+        assertEquals(account.getId(), actual.getId());
+        assertEquals(account.getEmail(), actual.getEmail());
+        assertEquals(account.getPassword(), actual.getPassword());
     }
 
 }

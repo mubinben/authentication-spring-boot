@@ -7,6 +7,7 @@ import com.example.authentication.response.RegisterResponse;
 import com.example.authentication.service.AccountService;
 import com.example.authentication.validate.RegisterValidate;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,9 @@ public class RegisterBusiness {
     private final RegisterValidate registerValidate;
     private final AccountService accountService;
 
+    @Qualifier("passwordEncoder")
+    private BCryptPasswordEncoder passwordEncoder;
+
     public RegisterResponse register(RegisterRequest request) {
         registerValidate.validate(request);
 
@@ -25,7 +29,6 @@ public class RegisterBusiness {
             throw new ConflictException(String.format("email %s duplicate", request.getEmail()));
         }
 
-        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
         String passwordEncoded = passwordEncoder.encode(request.getPassword());
 
         Account account = new Account();
