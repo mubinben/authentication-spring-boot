@@ -6,6 +6,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Column;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.JoinColumn;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,5 +28,9 @@ public class Account {
 
     @Column(name = "password", length = 256, nullable = false)
     private String password;
+
+    @OneToOne
+    @JoinColumn(name = "refresh_token_id")
+    private RefreshToken refreshToken;
 
 }
