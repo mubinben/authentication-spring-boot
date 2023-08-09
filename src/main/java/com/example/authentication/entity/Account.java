@@ -33,4 +33,8 @@ public class Account {
     @JoinColumn(name = "refresh_token_id")
     private RefreshToken refreshToken;
 
+    @OneToOne
+    @JoinColumn(name = "access_token_id")
+    private AccessToken accessToken;
+
 }
