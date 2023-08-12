@@ -10,8 +10,7 @@ import jakarta.persistence.OneToOne;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.LocalDateTime;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -28,10 +27,10 @@ public class RefreshToken {
     private String token;
 
     @Column(name = "issued_at")
-    private LocalDateTime issuedAt;
+    private Date issuedAt;
 
-    @Column(name = "expiration")
-    private LocalDateTime expiration;
+    @Column(name = "expires_at")
+    private Date expiresAt;
 
     @OneToOne(mappedBy = "refreshToken")
     private Account account;
