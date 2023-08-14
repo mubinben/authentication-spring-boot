@@ -10,7 +10,7 @@ import jakarta.persistence.OneToOne;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.util.Date;
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -27,10 +27,10 @@ public class AccessToken {
     private String token;
 
     @Column(name = "issued_at")
-    private Date issuedAt;
+    private Instant issuedAt;
 
     @Column(name = "expires_at")
-    private Date expiresAt;
+    private Instant expiresAt;
 
     @OneToOne(mappedBy = "accessToken")
     private Account account;
