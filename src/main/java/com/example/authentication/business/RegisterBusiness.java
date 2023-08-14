@@ -1,6 +1,8 @@
 package com.example.authentication.business;
 
+import com.example.authentication.entity.AccessToken;
 import com.example.authentication.entity.Account;
+import com.example.authentication.entity.RefreshToken;
 import com.example.authentication.exception.ConflictException;
 import com.example.authentication.request.RegisterRequest;
 import com.example.authentication.response.RegisterResponse;
@@ -34,6 +36,8 @@ public class RegisterBusiness {
         Account account = new Account();
         account.setEmail(request.getEmail());
         account.setPassword(passwordEncoded);
+        account.setAccessToken(new AccessToken());
+        account.setRefreshToken(new RefreshToken());
         Account saved = accountService.save(account);
 
         RegisterResponse response = new RegisterResponse();

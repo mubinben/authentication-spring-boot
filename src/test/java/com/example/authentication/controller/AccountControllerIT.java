@@ -1,7 +1,11 @@
 package com.example.authentication.controller;
 
+import com.example.authentication.entity.AccessToken;
 import com.example.authentication.entity.Account;
+import com.example.authentication.entity.RefreshToken;
+import com.example.authentication.repository.AccessTokenRepository;
 import com.example.authentication.repository.AccountRepository;
+import com.example.authentication.repository.RefreshTokenRepository;
 import com.example.authentication.request.LoginRequest;
 import com.example.authentication.request.RegisterRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -22,6 +27,10 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -39,6 +48,12 @@ class AccountControllerIT {
     @Autowired
     private AccountRepository accountRepository;
 
+    @Autowired
+    private AccessTokenRepository accessTokenRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
     @BeforeEach
     public void setup() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
@@ -47,6 +62,8 @@ class AccountControllerIT {
     @AfterEach
     public void teardown() {
         accountRepository.deleteAll();
+        accessTokenRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
     }
 
     @Test
@@ -210,10 +227,22 @@ class AccountControllerIT {
         registerRequest.setConfirmPassword("secret");
 
         MockHttpServletRequestBuilder request = createRequest(registerRequest);
-
         mockMvc.perform(request)
                 .andExpectAll(status().isCreated())
                 .andExpect(jsonPath("$.email").value(registerRequest.getEmail()));
+
+        Account accountSaved = accountRepository.findByEmail(registerRequest.getEmail()).orElseThrow();
+        assertNotNull(accountSaved.getId());
+        assertEquals(registerRequest.getEmail(), accountSaved.getEmail());
+        assertNotEquals(registerRequest.getPassword(), accountSaved.getPassword());
+        AccessToken accessToken = accountSaved.getAccessToken();
+        assertNotNull(accessToken.getId());
+        assertNull(accessToken.getIssuedAt());
+        assertNull(accessToken.getExpiresAt());
+        RefreshToken refreshToken = accountSaved.getRefreshToken();
+        assertNotNull(refreshToken.getId());
+        assertNull(refreshToken.getIssuedAt());
+        assertNull(refreshToken.getExpiresAt());
     }
 
     @Test
@@ -351,13 +380,21 @@ class AccountControllerIT {
         Account account = new Account();
         account.setEmail(loginRequest.getEmail());
         account.setPassword(passwordEncoded);
+        account.setAccessToken(new AccessToken());
+        account.setRefreshToken(new RefreshToken());
         accountRepository.save(account);
 
         MockHttpServletRequestBuilder request = createRequest(loginRequest);
+        ResultActions result = mockMvc.perform(request);
 
-        mockMvc.perform(request)
-                .andExpectAll(status().isOk())
-                .andExpect(jsonPath("$.email").value(account.getEmail()));
+        Account accountSaved = accountRepository.findByEmail(account.getEmail()).orElseThrow();
+        String actualAccessToken = accountSaved.getAccessToken().getToken();
+        String actualRefreshToken = accountSaved.getRefreshToken().getToken();
+
+        result.andExpectAll(status().isOk())
+                .andExpect(jsonPath("$.email").value(accountSaved.getEmail()))
+                .andExpect(jsonPath("$.accessToken").value(actualAccessToken))
+                .andExpect(jsonPath("$.refreshToken").value(actualRefreshToken));
     }
 
     private MockHttpServletRequestBuilder createRequest(RegisterRequest registerRequest) throws Exception {
